@@ -15,7 +15,7 @@ const client = new Client({
 });
 
 // --- 重複送信防止用の設定 ---
-const processedMessages = new Set();
+//const processedMessages = new Set();
 
 client.on('messageCreate', async (msg) => {
   // ボット自身の発言は無視
