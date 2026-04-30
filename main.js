@@ -25,45 +25,45 @@ client.on('messageCreate', async (msg) => {
   if (processedMessages.has(msg.id)) return;
   processedMessages.add(msg.id);
 
-  // メモリ肥大化防止（保存するIDを直近100件に制限）
+  // メモリ肥大化防止（直近100件）
   if (processedMessages.size > 100) {
     const firstId = processedMessages.values().next().value;
     processedMessages.delete(firstId);
   }
 
-  // 1. ユーザー名の取得（サーバー内ニックネームを優先）
+  // サーバー内での表示名を優先取得
   const userName = msg.member ? msg.member.displayName : msg.author.username;
-  
-  // 2. 送信内容の準備
-  let content = msg.content;
 
-  // 3. 画像（添付ファイル）があるかチェック
+  // 1. テキストがある場合は送信
+  if (msg.content) {
+    await sendToGas(userName, msg.content);
+  }
+
+  // 2. 添付ファイル（画像）をすべてループで処理して送信
   if (msg.attachments.size > 0) {
-    const attachment = msg.attachments.first();
-    // ファイルが画像形式（image/jpegなど）の場合、URLをコンテンツにする
-    if (attachment.contentType && attachment.contentType.startsWith("image/")) {
-      content = attachment.url;
+    for (const [id, attachment] of msg.attachments) {
+      // 画像ファイル（image/で始まるもの）のみを1枚ずつ送信
+      if (attachment.contentType && attachment.contentType.startsWith("image/")) {
+        await sendToGas(userName, attachment.url);
+      }
     }
   }
+});
 
-  // テキストも画像もない場合は何もしない
-  if (!content) return;
-
+/**
+ * GASへデータを送信する共通関数
+ */
+async function sendToGas(user, text) {
   try {
-    // GASへデータを送信
-    // タイムアウトを10秒に設定し、画像処理の遅延による再送を防ぐ
     await axios.post(process.env.GAS_URL, {
-      user: userName,
-      text: content
-    }, { timeout: 10000 });
+      user: user,
+      text: text
+    }, { timeout: 15000 }); // 画像処理を考慮してタイムアウトを15秒に延長
     
-    console.log(`送信成功: ${userName}[${content}]`);
+    console.log(`送信成功: ${user}[${text}]`);
   } catch (error) {
     console.error("GASへの送信に失敗しました:", error.message);
-    
-    // 送信に失敗した場合は、再送される可能性を考えてIDをリストから消しておく
-    processedMessages.delete(msg.id);
   }
-});
+}
 
 client.login(process.env.DISCORD_TOKEN);
