@@ -1,5 +1,12 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
+const express = require('express'); // 追加
+
+// --- ヘルスチェック用サーバー設定 ---
+const app = express();
+app.get('/', (req, res) => res.send('Bot is running!'));
+app.listen(8000, () => console.log('Listening on port 8000'));
+// ------------------------------
 
 const client = new Client({
   intents: [
