@@ -1,31 +1,34 @@
+const express = require("express");
 const { Client, GatewayIntentBits } = require('discord.js');
-const axios = require('axios'); // axiosを使う方がエラーが少なく安定します
+const axios = require('axios'); // 安定性のためにaxiosに変更
+
+const app = express();
+app.get("/", (req, res) => res.send("Bot is running!"));
+app.listen(8000);
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent, // これが重要
-  ],
+    GatewayIntentBits.MessageContent
+  ]
 });
 
 client.on('messageCreate', async (msg) => {
-  if (msg.author.bot) return;
+  if (msg.author.bot || !msg.content) return;
 
-  // 誰が送ったか、名前を取得
+  // サーバーでの表示名（ニックネーム）を優先して取得
   const userName = msg.member ? msg.member.displayName : msg.author.username;
 
-  const payload = {
-    user: userName,
-    text: msg.content
-  };
-
   try {
-    // GASにデータを送信
-    await axios.post(process.env.GAS_URL, payload);
+    // GASへデータを送信
+    await axios.post(process.env.GAS_URL, {
+      user: userName,
+      text: msg.content
+    });
     console.log(`送信成功: ${userName}[${msg.content}]`);
   } catch (error) {
-    console.error(`エラー: ${error.message}`);
+    console.error("GASへの送信に失敗しました:", error.message);
   }
 });
 
