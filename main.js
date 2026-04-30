@@ -1,52 +1,39 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
-const express = require('express');
 
-// --- ヘルスチェック用サーバー設定 (Koyebのエラー回避用) ---
-const app = express();
-app.get('/', (req, res) => res.send('Bot is running!'));
-app.listen(8000, () => console.log('Listening on port 8000'));
-// ---------------------------------------------------
+// Koyebの環境変数から情報を読み込みます
+const TOKEN = process.env.DISCORD_TOKEN;
+const GAS_URL = process.env.GAS_URL;
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.MessageContent, // メッセージ内容を読み取る設定
   ],
 });
 
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const GAS_URL = process.env.GAS_URL;
-
 client.once('ready', () => {
-  console.log(`Logged in as ${client.user.tag}!`);
+  console.log(`Logged in as ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
-  // ボット自身のメッセージは無視
-  if (message.author.bot) return;
+  // Bot自身の発言や、メッセージが空の場合は無視します
+  if (message.author.bot || !message.content) return;
+
+  // 「誰が[メッセージ]」の形にしてGASに送る準備
+  const payload = {
+    user: message.member ? message.member.displayName : message.author.username,
+    text: message.content
+  };
 
   try {
-    let contentText = message.content;
-
-    // 画像が添付されている場合はURLを取得
-    if (message.attachments.size > 0) {
-      message.attachments.forEach(attachment => {
-        contentText += "\n" + attachment.url;
-      });
-    }
-
-    // GASにデータを送信
-    await axios.post(GAS_URL, {
-      user: message.author.username,
-      text: contentText
-    });
-    
-    console.log(`送信成功: ${message.author.username}[${contentText}]`);
+    // GASにデータを送信 (axiosライブラリを使用)
+    await axios.post(GAS_URL, payload);
+    console.log(`Sent: ${payload.user}[${payload.text}]`);
   } catch (error) {
-    console.error("GASへの送信エラー:", error.message);
+    console.error(`Error sending to GAS: ${error.message}`);
   }
 });
 
-client.login(DISCORD_TOKEN);
+client.login(TOKEN);
