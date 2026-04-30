@@ -1,39 +1,32 @@
 const { Client, GatewayIntentBits } = require('discord.js');
-const axios = require('axios');
-
-// Koyebの環境変数から情報を読み込みます
-const TOKEN = process.env.DISCORD_TOKEN;
-const GAS_URL = process.env.GAS_URL;
+const axios = require('axios'); // axiosを使う方がエラーが少なく安定します
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent, // メッセージ内容を読み取る設定
+    GatewayIntentBits.MessageContent, // これが重要
   ],
 });
 
-client.once('ready', () => {
-  console.log(`Logged in as ${client.user.tag}`);
-});
+client.on('messageCreate', async (msg) => {
+  if (msg.author.bot) return;
 
-client.on('messageCreate', async (message) => {
-  // Bot自身の発言や、メッセージが空の場合は無視します
-  if (message.author.bot || !message.content) return;
+  // 誰が送ったか、名前を取得
+  const userName = msg.member ? msg.member.displayName : msg.author.username;
 
-  // 「誰が[メッセージ]」の形にしてGASに送る準備
   const payload = {
-    user: message.member ? message.member.displayName : message.author.username,
-    text: message.content
+    user: userName,
+    text: msg.content
   };
 
   try {
-    // GASにデータを送信 (axiosライブラリを使用)
-    await axios.post(GAS_URL, payload);
-    console.log(`Sent: ${payload.user}[${payload.text}]`);
+    // GASにデータを送信
+    await axios.post(process.env.GAS_URL, payload);
+    console.log(`送信成功: ${userName}[${msg.content}]`);
   } catch (error) {
-    console.error(`Error sending to GAS: ${error.message}`);
+    console.error(`エラー: ${error.message}`);
   }
 });
 
-client.login(TOKEN);
+client.login(process.env.DISCORD_TOKEN);
