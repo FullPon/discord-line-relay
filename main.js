@@ -1,3 +1,7 @@
+const express = require("express");
+const app = express();
+app.get("/", (req, res) => res.send("OK"));
+app.listen(8000);
 const { Client, GatewayIntentBits } = require('discord.js');
 const request = require('request');
 
