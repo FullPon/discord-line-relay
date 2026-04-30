@@ -1,48 +1,31 @@
-const { Client, GatewayIntentBits } = require('discord.js');
-const axios = require('axios');
-const express = require('express'); // 追加
+client.on('messageCreate', async (msg) => {
+  if (msg.author.bot) return;
 
-// --- ヘルスチェック用サーバー設定 ---
-const app = express();
-app.get('/', (req, res) => res.send('Bot is running!'));
-app.listen(8000, () => console.log('Listening on port 8000'));
-// ------------------------------
+  // 1. 送信データの準備
+  const userName = msg.member ? msg.member.displayName : msg.author.username;
+  let content = msg.content;
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
-});
+  // 2. 画像（添付ファイル）があるかチェック
+  if (msg.attachments.size > 0) {
+    // 最初の1枚のURLを取得（LINEは1メッセージ1画像のため）
+    const attachment = msg.attachments.first();
+    // 画像ファイルの場合のみ、内容をURLに置き換える
+    if (attachment.contentType && attachment.contentType.startsWith("image/")) {
+      content = attachment.url;
+    }
+  }
 
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const GAS_URL = process.env.GAS_URL;
-
-client.once('ready', () => {
-  console.log(`Logged in as ${client.user.tag}!`);
-});
-
-client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
+  // 3. テキストも画像も何もない場合は送らない
+  if (!content) return;
 
   try {
-    let contentText = message.content;
-    if (message.attachments.size > 0) {
-      message.attachments.forEach(attachment => {
-        contentText += "\n" + attachment.url;
-      });
-    }
-
-    await axios.post(GAS_URL, {
-      user: message.author.username,
-      text: contentText
+    // GASへデータを送信
+    await axios.post(process.env.GAS_URL, {
+      user: userName,
+      text: content
     });
-    
-    console.log(`送信成功: ${message.author.username}[${contentText}]`);
+    console.log(`送信成功: ${userName}[${content}]`);
   } catch (error) {
-    console.error("GAS送信エラー:", error.message);
+    console.error("GASへの送信に失敗しました:", error.message);
   }
 });
-
-client.login(DISCORD_TOKEN);
