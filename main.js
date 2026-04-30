@@ -27,7 +27,6 @@ client.on('messageCreate', async (message) => {
       });
     }
 
-    // GASへ送信
     await axios.post(GAS_URL, {
       user: message.author.username,
       text: contentText
